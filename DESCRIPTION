@@ -14,7 +14,11 @@ Depends:
 RoxygenNote: 7.2.3
 Imports: 
     dplyr,
+    httr2,
+    lubridate,
     ompr,
     ompr.roi,
+    purrr,
+    readr,
     ROI.plugin.glpk,
     tidyr

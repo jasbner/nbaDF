@@ -6,8 +6,9 @@
 #'
 #' @examples
 load_training_data <- function(){
-  data("games_details")
-  data("games")
+  games <- update_games()
+  games_details <- update_games_details()
+
   games_unique <- games |> group_by(GAME_ID) |> filter(row_number() == 1) |> ungroup()
   game_stats <- games_details |> left_join(games_unique, by = "GAME_ID")
   # arrange by date

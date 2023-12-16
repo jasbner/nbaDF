@@ -4,6 +4,7 @@
 #'
 #' @import dplyr
 #' @import tidyr
+#' @import readr
 #'
 #' @return
 #' @export
@@ -14,7 +15,7 @@ load_todays_fanduel <- function(date = as.character(Sys.Date())){
   curr_nba_date_dat <- list.files("./data-raw/Fanduel", pattern = paste0("FanDuel-NBA-", gsub("-",".*",date),".*?players-list"), full.names = TRUE)
 
   #read in nba data
-  dat <- readr::read_csv(curr_nba_date_dat)
+  dat <- readr::read_csv(curr_nba_date_dat,show_col_types = FALSE)
   dat <- dat |>  dplyr::rename(first = `First Name`, last = `Last Name`, injury_flag = `Injury Indicator`, injury_desc = `Injury Details`)
 
   #one hot encode team
