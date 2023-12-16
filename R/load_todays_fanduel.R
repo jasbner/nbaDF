@@ -2,6 +2,9 @@
 #'
 #' @param date
 #'
+#' @import dplyr
+#' @import tidyr
+#'
 #' @return
 #' @export
 #'

@@ -1,3 +1,12 @@
+#' Title
+#'
+#' @param dat_pred
+#'
+#' @import dplyr
+#' @return
+#' @export
+#'
+#' @examples
 filter_roster_before_optim <- function(dat_pred){
   #filter out players that do not have stats from nba
   if(nrow(dat_pred |> filter(is.na(NBA_PLAYER_ID))) > 0){

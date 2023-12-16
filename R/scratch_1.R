@@ -1,12 +1,13 @@
-t <- function(){
-library(lubridate)
-library(dplyr)
-library(tidyr)
-library(ompr)
-library(ompr.roi)
-library(ROI.plugin.glpk)
-devtools::load_all()
-
+#' Main function
+#'
+#' @return
+#'
+#' @import dplyr
+#'
+#' @export
+#'
+#' @examples
+update_run_full_nba_model <- function(){
 #load training data
 game_stats <- load_training_data()
 
@@ -31,9 +32,6 @@ dat_pred_filtered <- filter_roster_before_optim(dat_pred)
 #submit to optimization routine
 res <- optim_nba(dat = dat_pred_filtered, n_fantasy_teams = 5, p = 7)
 
-#summarise results
-res |> group_by(Nickname) |> count() |> arrange(desc(n))
-
 #format data so it fits fanduel csv format
 fd_ss <- create_fanduel_lineup_spreadsheet(res)
 
@@ -43,4 +41,6 @@ fd_ss <- create_fanduel_lineup_spreadsheet(res)
 date = as.character(Sys.Date())
 write.csv(fd_ss, file = paste0("./data-raw/lineup",date,".csv"), row.names = FALSE)
 
+#summarise results
+res |> group_by(Nickname) |> count() |> arrange(desc(n))
 }

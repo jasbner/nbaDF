@@ -1,7 +1,11 @@
+#' Title
+#'
+#' @import dplyr
+#' @return
+#' @export
+#'
+#' @examples
 load_training_data <- function(){
-  library(lubridate)
-  library(dplyr)
-  library(tidyr)
   data("games_details")
   data("games")
   games_unique <- games |> group_by(GAME_ID) |> filter(row_number() == 1) |> ungroup()
