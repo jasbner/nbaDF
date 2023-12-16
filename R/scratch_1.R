@@ -51,6 +51,7 @@ if(nrow(dat_pred |> filter(is.na(FPPG))) > 0){
 }
 
 
+#filter out players that are unlikely to end up in the final roster
 
 
 #submit to optimization routine
