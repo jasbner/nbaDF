@@ -21,4 +21,6 @@ Imports:
     purrr,
     readr,
     ROI.plugin.glpk,
-    tidyr
+    stringr,
+    tidyr,
+    zoo

@@ -26,5 +26,7 @@ load_training_data <- function(){
   # calculate fantasy points(fp) and fantasy points per minute (fp_min)
   game_stats <- game_stats |> filter(MIN>12) |> mutate(fp = AST*1.5+BLK*3+OREB*1.2+DREB*1.2+STL*3-TO+PTS, fp_min = fp/MIN)
 
+  #there is duplication occuring somewhere need to figure out where
+  game_stats <- game_stats |> unique()
   game_stats
 }

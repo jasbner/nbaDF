@@ -27,6 +27,7 @@ data("player_agg")
 dat_pred <- dat |> left_join(player_agg, by = c("Id" = "FD_Id")) |> left_join(fp_pred, by = c("NBA_PLAYER_ID" = "PLAYER_ID")) |> left_join(min_pred, by = c("NBA_PLAYER_ID" = "PLAYER_ID"))
 
 # filter out players with insufficient data or low likelihood to end up on final roster
+# need to update this once predictions are in place
 dat_pred_filtered <- filter_roster_before_optim(dat_pred)
 
 #submit to optimization routine

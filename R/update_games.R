@@ -7,6 +7,7 @@
 #' @import dplyr
 #' @import httr2
 #' @import purrr
+#' @import stringr
 #'
 #' @examples
 update_games<- function(){
