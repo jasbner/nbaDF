@@ -74,3 +74,13 @@ for(f in files){
 
 hist_injury_report <- res_df
 usethis::use_data(hist_injury_report, overwrite = TRUE)
+
+
+
+# teams -------------------------------------------------------------------
+
+
+# read in player data
+team_details <- readr::read_csv("./data-raw/teams.csv")
+# save data to rdata file
+usethis::use_data(team_details)
