@@ -4,7 +4,7 @@
 \alias{model_minutes}
 \title{Title}
 \usage{
-model_minutes(game_stats)
+model_minutes(game_stats, refit = FALSE)
 }
 \arguments{
 \item{game_stats}{}
