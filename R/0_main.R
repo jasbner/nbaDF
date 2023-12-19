@@ -15,7 +15,7 @@ game_stats <- load_training_data()
 fp_pred <- model_fp_per_min(game_stats)
 
 #build minutes model
-min_pred <- model_minutes(game_stats)
+min_pred <- model_minutes(game_stats, refit = FALSE)
 
 #load today's fanduel numbers
 dat <- load_todays_fanduel()

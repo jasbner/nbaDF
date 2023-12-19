@@ -5,13 +5,13 @@
 #' @import dplyr
 #' @import zoo
 #' @import randomForest
-#' @import dplyr
+#' @import tidyr
 #'
 #' @return
 #' @export
 #'
 #' @examples
-model_minutes <- function(game_stats) {
+model_minutes <- function(game_stats, refit = FALSE) {
   # get the last game played for everyone this year
   # fp_min <- game_stats |> arrange(desc(GAME_DATE_EST)) |> group_by(PLAYER_ID) |> filter(row_number() == 1) |> ungroup() |> select(PLAYER_ID,MIN)
 
@@ -67,6 +67,68 @@ model_minutes <- function(game_stats) {
   # ungroup
   features <- features |> ungroup()
 
+
+# injury report data ------------------------------------------------------
+  data("hist_injury_report")
+
+  #add the most recent available injury report for today
+  today_injury_report <- update_injury_report()
+
+  #filter out those games that are not for the report date aka games for the next
+  # becaues we only want to predict for the current day
+  injury_report <- hist_injury_report |> mutate(game_date = mdy(`Game Date`)) |> select(-`Game Date`)
+  #reduce todays injury report by one so it joins to the last date for all of the other data
+  today_injury_report <- today_injury_report |> mutate(game_date = mdy(`Game Date`) - 1, report_date = report_date - 1) |> select(-`Game Date`)
+
+  today_injury_report <- today_injury_report |> select(colnames(injury_report))
+
+  #join together
+  injury_report <- rbind(injury_report,today_injury_report)
+
+  #merge team id and player id
+  data("team_details")
+
+  # set teamname similar to how it is done in the nba stats
+  team_merge <- team_details |> select(TEAM_ID,CITY,NICKNAME) |> tidyr::unite("FULLNAME",c("CITY","NICKNAME"), sep = " ")
+
+  # merge team with team details
+  injury_report_id <- injury_report |> left_join(team_merge, by = c("Team" = "FULLNAME"))
+  # fill gaps
+  injury_report_id <- injury_report_id |> mutate(TEAM_ID = ifelse(Team == "Minnesota",1610612750,TEAM_ID)) |> mutate(TEAM_ID = ifelse(Team == "LA Clippers",1610612746,TEAM_ID))
+
+  #get a set of player names and their associated teams
+  player_names <- game_stats |> select(PLAYER_NAME,PLAYER_ID,TEAM_ID) |> unique()
+
+  #format player name similar to game stats
+  injury_report_id <- injury_report_id |> tidyr::separate(`Player Name`,c("Last","First"), extra = "merge", sep = ", ", fill = "right") |> tidyr::unite(PLAYER_NAME, c("First","Last"), sep = " ")
+
+  # this join could probably be better
+  injury_report_id <- injury_report_id |> left_join(player_names, by = c("PLAYER_NAME" = "PLAYER_NAME", "TEAM_ID" = "TEAM_ID"))
+
+  # filter if we didnt find a match
+  injury_report_id <- injury_report_id |> filter(!is.na(PLAYER_ID)) |> filter(!is.na(TEAM_ID))
+
+  #format to join with the rest of the data
+  injury_join <- injury_report_id |> select(TEAM_ID,PLAYER_ID,game_date,`Current Status`, `Previous Status`, Reason)
+
+  #rename columns with spaces
+  injury_join <- injury_join |> rename(status = `Current Status`, prev_status = `Previous Status`)
+
+  # join back to features may need to investigate duplication
+  features <- features |> left_join(injury_join, by = c("TEAM_ID" = "TEAM_ID", "PLAYER_ID" = "PLAYER_ID", "GAME_DATE_EST" = "game_date"))
+
+  #one hot encode status this could be functionalized
+  features <- features |> mutate(injury_out = ifelse(status == "Out", 1,0)) |> mutate(injury_out = replace_na(injury_out,0))
+  features <- features |> mutate(injury_Available = ifelse(status == "Available", 1,0)) |> mutate(injury_Available = replace_na(injury_Available,0))
+  features <- features |> mutate(injury_Doubtful = ifelse(status == "Doubtful", 1,0)) |> mutate(injury_Doubtful = replace_na(injury_Doubtful,0))
+  features <- features |> mutate(injury_Probable = ifelse(status == "Probable", 1,0)) |> mutate(injury_Probable = replace_na(injury_Probable,0))
+  features <- features |> mutate(injury_Questionable = ifelse(status == "Questionable", 1,0)) |> mutate(injury_Questionable = replace_na(injury_Questionable,0))
+
+  #deselect injury columns as they are no longer needed
+  features <- features |> select(-status,-prev_status,-Reason)
+
+  # Modeling ----------------------------------------------------------------
+
   # get the set of values we want to predict
   fp_min <- features |>
     group_by(PLAYER_ID) |>
@@ -80,25 +142,33 @@ model_minutes <- function(game_stats) {
   # filter out unknowns
   features <- features |> filter(!is.na(value_pred))
 
+  #filter out dates that we don't have the injury report
+  features <- features |> filter(GAME_DATE_EST %in% unique(injury_join$game_date))
+
   # create model
   # reduce observations because it takes too long to train
   train_data <- features |>
-    filter(year(GAME_DATE_EST) > 2020) |>
+    #filter(year(GAME_DATE_EST) > 2020) |>
     select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST)
 
   # separate out predictors and target for random forest
   train_predictors <- train_data |> select(-value_pred)
   value_pred <- train_data$value_pred
 
+  #if we have new data need to refit
   if (refit) {
-    rf.fit <- randomForest(train_predictors, value_pred, ntree = 100, keep.forest = TRUE, importance = TRUE)
+    rf.fit <- randomForest(train_predictors, value_pred, ntree = 500, keep.forest = TRUE, importance = TRUE)
+    usethis::use_data(rf.fit,overwrite = TRUE)
   }
+
+  data("rf.fit")
+  model <- rf.fit
 
   # use model to predict todays minutes played
   predict_data <- fp_min |>
     ungroup() |>
     select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST, -MIN, -value_pred)
-  fp_pred <- predict(rf.fit, predict_data)
+  fp_pred <- predict(model, predict_data)
 
 
   final_predictions <- tibble(PLAYER_ID = fp_min$PLAYER_ID, MIN = fp_pred)
