@@ -15,7 +15,7 @@ filter_roster_before_optim <- function(dat_pred){
   }
 
   #substitue prediction to FPPG as the FPPG column is what we're optimizing on
-  dat_pred <- dat_pred |> mutate(FPPG = fp_min * MIN)
+  dat_pred <- dat_pred |> mutate(FPPG = fp_pred * min_pred)
 
   #filter out players that do not have a prediction
   if(nrow(dat_pred |> filter(is.na(FPPG))) > 0){

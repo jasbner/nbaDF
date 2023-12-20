@@ -15,7 +15,7 @@ model_fp_per_min <- function(game_stats){
     group_by(TEAM_ID, PLAYER_ID) |>
     arrange(desc(GAME_DATE_EST)) |>
     filter(n()>5) |>
-    mutate(mean_lag_5 = rollmean(fp, k = 5, fill = "extend", align = "left")) |>
+    mutate(fp_single_game = fp/MIN, fp_pred = rollmean(fp_single_game, k = 5, fill = "extend", align = "left")) |>
     ungroup()
 
   # get the set of values we want to predict
@@ -26,6 +26,6 @@ model_fp_per_min <- function(game_stats){
     filter(year(GAME_DATE_EST) == year(today())) |>
     ungroup()
 
-
+  fp_pred <- fp_pred |> select(PLAYER_ID,fp_pred)
   fp_pred
 }

@@ -15,29 +15,38 @@ model_minutes <- function(game_stats, refit = FALSE) {
   # get the last game played for everyone this year
   # fp_min <- game_stats |> arrange(desc(GAME_DATE_EST)) |> group_by(PLAYER_ID) |> filter(row_number() == 1) |> ungroup() |> select(PLAYER_ID,MIN)
 
-  fp_min <- game_stats |> select(PLAYER_ID, TEAM_ID, GAME_DATE_EST, MIN)
+  fp_min <- game_stats |> select(PLAYER_ID, TEAM_ID, GAME_DATE_EST, MIN, START_POSITION,SEASON)
+
 
   # get the set of games that were played for each team
   game_dates <- fp_min |>
     select(TEAM_ID, GAME_DATE_EST) |>
     unique()
 
+  # If a player played this season, extrapolate the dates to the current date
+  last_game <- game_stats |> group_by(TEAM_ID) |> arrange(desc(GAME_DATE_EST)) |> filter(row_number() == 1) |> select(TEAM_ID,GAME_DATE_EST,SEASON) |> rename(last_game = GAME_DATE_EST, last_game_season = SEASON)
+  curr_season <- max(game_stats$SEASON, na.rm = TRUE)
+
+  #build last day played to current
+  add_upper_bound <- game_stats |> left_join(last_game, by = c("TEAM_ID" = "TEAM_ID")) |> group_by(TEAM_ID, PLAYER_ID) |> mutate(new_game_date_est = as_date(ifelse((SEASON == last_game_season)& (GAME_DATE_EST == max(GAME_DATE_EST)),last_game,GAME_DATE_EST)))
+
   # This takes a long time, wonder if we can speed this up or precompute it?
   # it basically fills all players dates for every day and game that was played but
   # we could minimize this based on the players career dates or season date if we pulled in another column
-  filled <- fp_min |>
-    group_by(TEAM_ID, PLAYER_ID) |>
-    tidyr::complete(GAME_DATE_EST = seq.Date(min(GAME_DATE_EST), max(GAME_DATE_EST), by = "days"))
+  filled <- add_upper_bound |>
+    group_by(TEAM_ID, PLAYER_ID) |> select(PLAYER_ID, TEAM_ID, GAME_DATE_EST, MIN, START_POSITION,SEASON,new_game_date_est) |>
+    tidyr::complete(GAME_DATE_EST = seq.Date(min(GAME_DATE_EST), max(new_game_date_est), by = "days"))
+
 
   # get the players minutes if they did not play
   zeros_added <- filled |> inner_join(game_dates, by = c("TEAM_ID" = "TEAM_ID", "GAME_DATE_EST" = "GAME_DATE_EST"))
 
-  # remove players that only had 1 game with a team
-  zeros_added <- zeros_added |>
-    ungroup() |>
-    group_by(TEAM_ID, PLAYER_ID) |>
-    filter(!sum(!is.na(MIN)) == 1) |>
-    ungroup()
+  # # remove players that only had 1 game with a team
+  # zeros_added <- zeros_added |>
+  #   ungroup() |>
+  #   group_by(TEAM_ID, PLAYER_ID) |>
+  #   filter(!sum(!is.na(MIN)) == 1) |>
+  #   ungroup()
 
   # remove players that had less than 5 games with a team
   zeros_added <- zeros_added |>
@@ -45,7 +54,10 @@ model_minutes <- function(game_stats, refit = FALSE) {
     filter(n() > 5)
 
   # interpolate na values
-  zeros_added$MIN_na_removed <- zoo::na.approx(zeros_added$MIN)
+  zeros_added$MIN_na_removed <- zoo::na.approx(zeros_added$MIN, na.rm = FALSE)
+
+  #filter out those that still could not be interpolated
+  zeros_added <- zeros_added |> filter(!is.na(MIN_na_removed))
 
   # this can be improved i couldnt figure out how to do this dynamically
   features <- zeros_added |>
@@ -66,6 +78,9 @@ model_minutes <- function(game_stats, refit = FALSE) {
 
   # ungroup
   features <- features |> ungroup()
+
+  # one hot encode starters
+  features <- features |> mutate(starter = ifelse(START_POSITION=="",0,1)) |> mutate(starter = ifelse(is.na(START_POSITION),0,starter))
 
 
 # injury report data ------------------------------------------------------
@@ -149,7 +164,7 @@ model_minutes <- function(game_stats, refit = FALSE) {
   # reduce observations because it takes too long to train
   train_data <- features |>
     #filter(year(GAME_DATE_EST) > 2020) |>
-    select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST)
+    select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST, -START_POSITION, -SEASON, -new_game_date_est)
 
   # separate out predictors and target for random forest
   train_predictors <- train_data |> select(-value_pred)
@@ -165,13 +180,14 @@ model_minutes <- function(game_stats, refit = FALSE) {
   model <- rf.fit
 
   # use model to predict todays minutes played
+  # fp_min <- fp_min |> filter(!is.na(mean_lag_5))
   predict_data <- fp_min |>
     ungroup() |>
-    select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST, -MIN, -value_pred)
+    select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST, -MIN, -value_pred, -START_POSITION, -SEASON, -new_game_date_est)
   fp_pred <- predict(model, predict_data)
 
 
-  final_predictions <- tibble(PLAYER_ID = fp_min$PLAYER_ID, MIN = fp_pred)
+  final_predictions <- tibble(PLAYER_ID = fp_min$PLAYER_ID, min_pred = fp_pred)
   final_predictions
 
 }
