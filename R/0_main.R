@@ -44,7 +44,7 @@ fd_ss <- create_fanduel_lineup_spreadsheet(res)
 #update spreadsheet if necessary
 #update_csv(fd_ss,date)
 
-write.csv(fd_ss, file = paste0("./data-raw/generated_lineups/lineup",min_pred <- model_minutes(game_stats, refit = FALSE),".csv"), row.names = FALSE)
+write.csv(fd_ss, file = paste0("./data-raw/generated_lineups/lineup",date_predict,".csv"), row.names = FALSE)
 
 #summarise results
 res |> group_by(Nickname) |> count() |> arrange(desc(n))
