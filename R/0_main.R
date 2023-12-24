@@ -8,6 +8,9 @@
 #'
 #' @examples
 update_run_full_nba_model <- function(){
+  #set date for when we want to predict (sometimes we'll predict a day or two out)
+  date_predict <- Sys.Date()+1
+
 #load training data
 game_stats <- load_training_data()
 
@@ -15,13 +18,14 @@ game_stats <- load_training_data()
 fp_pred <- model_fp_per_min(game_stats)
 
 #build minutes model
-min_pred <- model_minutes(game_stats, refit = FALSE)
+# min_pred <- model_minutes(game_stats, refit = FALSE)
+min_pred <- model_minutes(game_stats, refit = TRUE)
 
 #load today's fanduel numbers
-dat <- load_todays_fanduel()
+dat <- load_todays_fanduel(date_predict)
 
 #load player id aggregation
-data("player_agg")
+player_agg <- update_player_agg(date_predict)
 
 #join to prediction
 dat_pred <- dat |> left_join(player_agg, by = c("Id" = "FD_Id")) |> left_join(fp_pred, by = c("NBA_PLAYER_ID" = "PLAYER_ID")) |> left_join(min_pred, by = c("NBA_PLAYER_ID" = "PLAYER_ID"))
@@ -39,8 +43,8 @@ fd_ss <- create_fanduel_lineup_spreadsheet(res)
 #write to file
 #update spreadsheet if necessary
 #update_csv(fd_ss,date)
-date = as.character(Sys.Date())
-write.csv(fd_ss, file = paste0("./data-raw/lineup",date,".csv"), row.names = FALSE)
+
+write.csv(fd_ss, file = paste0("./data-raw/generated_lineups/lineup",min_pred <- model_minutes(game_stats, refit = FALSE),".csv"), row.names = FALSE)
 
 #summarise results
 res |> group_by(Nickname) |> count() |> arrange(desc(n))

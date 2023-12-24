@@ -37,6 +37,7 @@ model_minutes <- function(game_stats, refit = FALSE) {
     group_by(TEAM_ID, PLAYER_ID) |> select(PLAYER_ID, TEAM_ID, GAME_DATE_EST, MIN, START_POSITION,SEASON,new_game_date_est) |>
     tidyr::complete(GAME_DATE_EST = seq.Date(min(GAME_DATE_EST), max(new_game_date_est), by = "days"))
 
+  filled <- filled |> ungroup() |> arrange(desc(GAME_DATE_EST))
 
   # get the players minutes if they did not play
   zeros_added <- filled |> inner_join(game_dates, by = c("TEAM_ID" = "TEAM_ID", "GAME_DATE_EST" = "GAME_DATE_EST"))
@@ -54,10 +55,12 @@ model_minutes <- function(game_stats, refit = FALSE) {
     filter(n() > 5)
 
   # interpolate na values
-  zeros_added$MIN_na_removed <- zoo::na.approx(zeros_added$MIN, na.rm = FALSE)
+  zeros_added <- zeros_added |> group_by(PLAYER_ID,TEAM_ID) |> mutate(MIN_na_removed = na.approx(MIN, na.rm = FALSE)) |> ungroup()
 
-  #filter out those that still could not be interpolated
-  zeros_added <- zeros_added |> filter(!is.na(MIN_na_removed))
+
+  #fill recent games with last game they played if they havent played in a while
+  # ?????????????? question the importance of this number
+  zeros_added <- zeros_added |> group_by(PLAYER_ID,TEAM_ID) |> fill(MIN_na_removed,.direction = "up") |> ungroup()
 
   # this can be improved i couldnt figure out how to do this dynamically
   features <- zeros_added |>
@@ -149,7 +152,8 @@ model_minutes <- function(game_stats, refit = FALSE) {
     group_by(PLAYER_ID) |>
     arrange(desc(GAME_DATE_EST)) |>
     filter(row_number() == 1) |>
-    filter(year(GAME_DATE_EST) == year(today()))
+    filter(year(GAME_DATE_EST) == year(today())) |>
+    filter(SEASON == curr_season | is.na(SEASON))
 
   # filter out columns with nas
   features <- features |> select(-MIN)
@@ -186,8 +190,9 @@ model_minutes <- function(game_stats, refit = FALSE) {
     select(-TEAM_ID, -PLAYER_ID, -GAME_DATE_EST, -MIN, -value_pred, -START_POSITION, -SEASON, -new_game_date_est)
   fp_pred <- predict(model, predict_data)
 
-
+  # browser()
   final_predictions <- tibble(PLAYER_ID = fp_min$PLAYER_ID, min_pred = fp_pred)
   final_predictions
+
 
 }
