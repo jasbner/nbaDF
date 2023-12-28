@@ -155,6 +155,9 @@ model_minutes <- function(game_stats, refit = FALSE) {
     filter(year(GAME_DATE_EST) == year(today())) |>
     filter(SEASON == curr_season | is.na(SEASON))
 
+  #set starting lineups based on rotowire
+  fp_min <- update_starting_lineups(fp_min)
+
   # filter out columns with nas
   features <- features |> select(-MIN)
 
