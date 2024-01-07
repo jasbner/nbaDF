@@ -14,7 +14,7 @@
 load_todays_fanduel <- function(date = as.character(Sys.Date())){
   #get file location for today's games
   curr_nba_date_dat <- list.files("./data-raw/Fanduel", full.names = TRUE)
-  curr_nba_date_dat <- curr_nba_date_dat[str_detect(curr_nba_date_dat,paste0(year(date)," ET-",month(date)," ET-",day(date)))]
+  curr_nba_date_dat <- curr_nba_date_dat[str_detect(curr_nba_date_dat,paste0(year(date)," ET-0*",month(date)," ET-0*",day(date)))]
   #read in nba data
   dat <- readr::read_csv(curr_nba_date_dat,show_col_types = FALSE)
   dat <- dat |>  dplyr::rename(first = `First Name`, last = `Last Name`, injury_flag = `Injury Indicator`, injury_desc = `Injury Details`)
