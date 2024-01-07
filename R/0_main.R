@@ -36,7 +36,7 @@ update_run_full_nba_model <- function(){
   dat_pred_filtered <- filter_roster_before_optim(dat_pred)
 
   #submit to optimization routine
-  res <- optim_nba(dat = dat_pred_filtered, n_fantasy_teams = 150, p = 7)
+  res <- optim_nba(dat = dat_pred_filtered, n_fantasy_teams = 5, p = 7)
 
   #format data so it fits fanduel csv format
   fd_ss <- create_fanduel_lineup_spreadsheet(res)
