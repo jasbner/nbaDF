@@ -24,7 +24,7 @@ model_fp_per_min <- function(game_stats){
     group_by(PLAYER_ID) |>
     arrange(desc(GAME_DATE_EST)) |>
     filter(row_number() == 1) |>
-    filter(year(GAME_DATE_EST) == year(today())) |>
+    filter(SEASON == max(mean_lag$SEASON)) |>
     ungroup()
 
   fp_pred <- fp_pred |> select(PLAYER_ID,fp_pred)
