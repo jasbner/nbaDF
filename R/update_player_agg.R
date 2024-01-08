@@ -11,6 +11,9 @@ update_player_agg <- function(date = as.character(Sys.Date())) {
     filter(PLAYER_ID == max(PLAYER_ID)) |>
     ungroup()
 
+  #RJ hampton needs to remove periods from name 1630181
+  players <- players |> mutate(PLAYER_NAME_simplified = ifelse(PLAYER_ID == 1630181,"RJ Hampton",PLAYER_NAME_simplified))
+
   FD_players <- load_todays_fanduel(date = date)
   FD_players <- FD_players |>
     select(Id, Nickname) |>
